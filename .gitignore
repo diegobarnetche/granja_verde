@@ -1,6 +1,7 @@
-GASTOS/backend/.env
-GASTOS/backend/node_modules/
-GASTOS/frontend/node_modules/
-GASTOS/backend/gastos.db
-.claude/
-GASTOS/.claude/
+GASTOS/
+VENTAS/
+backend/node_modules/
+frontend/node_modules/
+backend/gastos.db
+backend/.env 
+GRANJA VERDE.claude/

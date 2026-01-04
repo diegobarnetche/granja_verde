@@ -1,0 +1,18 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(sqlite3:*)",
+      "Bash(node ver-gastos.js:*)",
+      "Bash(npm install)",
+      "Bash(npm start)",
+      "Bash(taskkill:*)",
+      "Bash(netstat:*)",
+      "Bash(findstr:*)",
+      "Bash(curl:*)",
+      "Bash(dir:*)",
+      "Bash(cat:*)",
+      "Bash(npm run dev:*)",
+      "Bash(git add:*)"
+    ]
+  }
+}
