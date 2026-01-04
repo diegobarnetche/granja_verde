@@ -1,0 +1,6 @@
+GASTOS/backend/.env
+GASTOS/backend/node_modules/
+GASTOS/frontend/node_modules/
+GASTOS/backend/gastos.db
+.claude/
+GASTOS/.claude/
