@@ -13,11 +13,14 @@ function Navbar() {
         <h2>Granja Verde</h2>
       </div>
       <div className="navbar-links">
-        <Link to="/gastos" className={isActive('/gastos')}>
-          Gastos
-        </Link>
         <Link to="/ventas" className={isActive('/ventas')}>
           Ventas
+        </Link>
+        <Link to="/cobros" className={isActive('/cobros')}>
+          Cobros
+        </Link>
+        <Link to="/gastos" className={isActive('/gastos')}>
+          Gastos
         </Link>
         <Link to="/pedidos" className={isActive('/pedidos')}>
           Pedidos

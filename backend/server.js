@@ -35,85 +35,33 @@ async function verificarConexion() {
   }
 }
 
-app.get('/api/gastos', async (req, res) => {
+// Endpoint temporal para verificar esquema de tablas
+app.get('/api/debug/:tabla-schema', async (req, res) => {
   try {
-    const result = await pool.query(
-      'SELECT "ID_GASTO", "FECHA", "MONTO", "MONEDA", "METODO_PAGO", "CATEGORIA", "ESTADO", "CREADO_EN" FROM "GV"."GASTO" ORDER BY "FECHA" DESC'
-    );
+    const tabla = req.params.tabla.toUpperCase();
+    const result = await pool.query(`
+      SELECT column_name, data_type
+      FROM information_schema.columns
+      WHERE table_schema = 'GV' AND table_name = $1
+      ORDER BY ordinal_position
+    `, [tabla]);
     res.json(result.rows);
   } catch (err) {
-    console.error('Error al obtener gastos:', err);
     res.status(500).json({ error: err.message });
   }
 });
 
-app.post('/api/gastos', async (req, res) => {
-  const { fecha, monto, moneda, metodo_pago, categoria, estado } = req.body;
+// Módulo de ventas/pedidos
+const ventasRouter = require('./modules/ventas/ventas.routes');
+app.use('/api/ventas', ventasRouter(pool));
 
-  if (!fecha || !monto || !moneda || !metodo_pago || !categoria) {
-    return res.status(400).json({
-      error: 'Fecha, monto, moneda, método de pago y categoría son requeridos'
-    });
-  }
+// Módulo de gastos
+const gastosRouter = require('./modules/gastos/gastos.routes');
+app.use('/api/gastos', gastosRouter(pool));
 
-  try {
-    const result = await pool.query(
-      `INSERT INTO "GV"."GASTO" ("FECHA", "MONTO", "MONEDA", "METODO_PAGO", "CATEGORIA", "ESTADO", "CREADO_EN")
-       VALUES ($1, $2, $3, $4, $5, $6, NOW())
-       RETURNING *`,
-      [fecha, monto, moneda, metodo_pago, categoria, estado || 'PENDIENTE']
-    );
-
-    res.json(result.rows[0]);
-  } catch (err) {
-    console.error('Error al crear gasto:', err);
-    res.status(500).json({ error: err.message });
-  }
-});
-
-app.put('/api/gastos/:id', async (req, res) => {
-  const { id } = req.params;
-  const { fecha, monto, moneda, metodo_pago, categoria, estado } = req.body;
-
-  try {
-    const result = await pool.query(
-      `UPDATE "GV"."GASTO"
-       SET "FECHA" = $1, "MONTO" = $2, "MONEDA" = $3, "METODO_PAGO" = $4, "CATEGORIA" = $5, "ESTADO" = $6
-       WHERE "ID_GASTO" = $7
-       RETURNING *`,
-      [fecha, monto, moneda, metodo_pago, categoria, estado, id]
-    );
-
-    if (result.rows.length === 0) {
-      return res.status(404).json({ error: 'Gasto no encontrado' });
-    }
-
-    res.json(result.rows[0]);
-  } catch (err) {
-    console.error('Error al actualizar gasto:', err);
-    res.status(500).json({ error: err.message });
-  }
-});
-
-app.delete('/api/gastos/:id', async (req, res) => {
-  const { id } = req.params;
-
-  try {
-    const result = await pool.query(
-      'DELETE FROM "GV"."GASTO" WHERE "ID_GASTO" = $1 RETURNING *',
-      [id]
-    );
-
-    if (result.rows.length === 0) {
-      return res.status(404).json({ error: 'Gasto no encontrado' });
-    }
-
-    res.json({ message: 'Gasto eliminado', gasto: result.rows[0] });
-  } catch (err) {
-    console.error('Error al eliminar gasto:', err);
-    res.status(500).json({ error: err.message });
-  }
-});
+// Módulo de cobros
+const cobrosRouter = require('./modules/cobros/cobros.routes');
+app.use('/api/cobros', cobrosRouter(pool));
 
 verificarConexion().then(() => {
   app.listen(PORT, () => {

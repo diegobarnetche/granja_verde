@@ -3,6 +3,7 @@ import Navbar from './components/Navbar'
 import Gastos from './pages/Gastos'
 import Ventas from './pages/Ventas'
 import Pedidos from './pages/Pedidos'
+import Cobros from './pages/Cobros'
 
 function App() {
   return (
@@ -10,10 +11,11 @@ function App() {
       <div className="app">
         <Navbar />
         <Routes>
-          <Route path="/" element={<Navigate to="/gastos" replace />} />
+          <Route path="/" element={<Navigate to="/ventas" replace />} />
           <Route path="/gastos" element={<Gastos />} />
           <Route path="/ventas" element={<Ventas />} />
           <Route path="/pedidos" element={<Pedidos />} />
+          <Route path="/cobros" element={<Cobros />} />
         </Routes>
       </div>
     </Router>
