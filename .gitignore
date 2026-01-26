@@ -74,6 +74,7 @@ coverage/
 # Archivos de prompts/notas locales
 promt ventas_module.txt
 *.txt.bak
+2026-01-16-modified_sales_create_cobros.txt
 
 # Archivos nul (Windows)
 nul

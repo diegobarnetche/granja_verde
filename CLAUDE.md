@@ -4,7 +4,28 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-GRANJA VERDE is a farm management web application for tracking expenses (Gastos), sales, and orders (Ventas/Pedidos). Built with Express.js backend, React frontend, and PostgreSQL database.
+GRANJA VERDE is a farm management web application for tracking expenses (Gastos), sales (Ventas), collections (Cobros), and orders (Pedidos). Built with Express.js backend, React frontend, and PostgreSQL database.
+
+## Current Project Status
+
+### Modules Status
+| Module | Backend | Frontend | Status |
+|--------|---------|----------|--------|
+| Ventas | OK | OK | Funcional |
+| Cobros | OK | OK | Funcional |
+| Gastos | OK | OK | Funcional |
+| Pedidos | - | Placeholder | Pendiente desarrollo |
+
+### Pending Tasks
+- [ ] PWA: Implementar Nivel 0 (instalable, sin offline)
+- [ ] PWA: Futuro - Nivel 1 (cache de catálogos para lectura offline)
+- [ ] Pedidos: Desarrollar módulo completo
+
+### Recent Changes (2026-01-16)
+- Fix: Autocomplete muestra lista completa al hacer foco
+- Fix: Campo ABONADO no crashea al borrar valor
+- Fix: Estados de pago corregidos (PAGO PENDIENTE, PAGO PARCIAL, PAGO, CANCELADO)
+- Add: Módulo Cobros completo (backend + frontend)
 
 ## Development Commands
 
@@ -22,9 +43,11 @@ cd frontend && npm install && npm run dev
 docker-compose up --build
 ```
 
-### Build
+### Production (Ubuntu Server)
 ```bash
-cd frontend && npm run build
+cd ~/granja_verde
+git pull origin main
+docker-compose up --build -d
 ```
 
 ## Architecture
@@ -34,18 +57,23 @@ cd frontend && npm run build
 backend/
 ├── server.js                 # Express entry point, database pool setup
 └── modules/
-    ├── gastos/               # Expense management module
+    ├── gastos/               # Expense management
     │   ├── gastos.routes.js
     │   ├── gastos.controller.js
     │   ├── gastos.service.js
     │   └── gastos.sql.js
-    └── ventas/               # Sales/orders module
-        ├── ventas.routes.js
-        ├── ventas.controller.js
-        ├── ventas.service.js
-        ├── ventas.validators.js
-        ├── ventas.sql.js
-        └── sql/constraints.sql
+    ├── ventas/               # Sales module
+    │   ├── ventas.routes.js
+    │   ├── ventas.controller.js
+    │   ├── ventas.service.js
+    │   ├── ventas.validators.js
+    │   └── ventas.sql.js
+    └── cobros/               # Collections/payments module
+        ├── cobros.routes.js
+        ├── cobros.controller.js
+        ├── cobros.service.js
+        ├── cobros.validators.js
+        └── cobros.sql.js
 ```
 
 ### Module Pattern
@@ -62,39 +90,59 @@ function createModuleRouter(pool) {
 ### Frontend Structure
 ```
 frontend/src/
-├── App.jsx          # Router (react-router-dom)
+├── App.jsx              # Router (react-router-dom)
 ├── pages/
-│   ├── Gastos.jsx   # Expense form + list
-│   └── Ventas.jsx   # 3-step wizard for sales/orders
+│   ├── Ventas.jsx       # 4-step wizard for sales
+│   ├── Cobros.jsx       # 4-step wizard for collections
+│   ├── Gastos.jsx       # Expense form + list
+│   └── Pedidos.jsx      # Placeholder "Módulo no disponible"
 └── components/
-    └── Navbar.jsx
+    └── Navbar.jsx       # Navigation (Ventas, Cobros, Gastos, Pedidos)
 ```
 
 ## Database
 
 - **Schema**: `"GV"` (quoted identifiers required)
-- **Key tables**: VENTAS, PEDIDOS, PEDIDOS_DETALLE, CLIENTE, PRODUCTO, GASTO
+- **Key tables**: VENTAS, ING_TRANSACCIONES, ING_DETALLE, CLIENTE, PRODUCTO, GASTO
 - **Important**: Product primary key is `ITEM` (BIGINT), NOT `ID_PRODUCTO`
 - **UMD**: Unit multiplier for quantity calculations (CANTIDAD_UNIDADES = CANTIDAD × UMD)
 
-## API Conventions
+### VENTAS.ESTADO Check Constraint
+```sql
+CHECK ("ESTADO" IN ('PAGO PENDIENTE','PAGO PARCIAL','PAGO','CANCELADO'))
+```
 
-### Endpoints
-- Gastos: `GET/POST/PUT/DELETE /api/gastos`
-- Ventas: `/api/ventas`, `/api/ventas/:venta_id`, `/api/ventas/catalogos`
+## API Endpoints
 
-### Validation Enums
-- VENTA_TYPE: `VENTA | PEDIDO`
-- PED_SUBTYPE: `GRANJA | TELEFONO | PUNTO DE VENTA`
-- PED_STATUS: `PENDIENTE | PREPARANDO | ENVIADO | PREPARADO | ENTREGADO | CANCELADO`
-- METODO_DE_PAGO: `DEBITO | TRANSFERENCIA | CREDITO | EFECTIVO`
-- PAGO_STATUS: `PENDIENTE | PAGO PARCIAL | PAGADO | CANCELADO`
+### Ventas
+- `GET /api/ventas` - List sales
+- `GET /api/ventas/:venta_id` - Get sale by ID
+- `POST /api/ventas` - Create sale
+- `PUT /api/ventas/:venta_id` - Update sale
+- `GET /api/ventas/catalogos` - Get clients/products lookups
 
-### Business Rules
-- CANTIDAD must be a multiple of 0.5
-- MONTO_PAGO must be >= 0 and <= MONTO
-- Ventas with VENTA_TYPE='PEDIDO' require ITEMS array and PED_SUBTYPE
-- All operations use PostgreSQL transactions for atomic writes
+### Cobros
+- `GET /api/cobros/pending-clients` - Clients with pending balance
+- `GET /api/cobros/client/:id/ventas` - Pending sales for client
+- `GET /api/cobros/client/:id/historial` - Payment history
+- `POST /api/cobros/register-payment` - Register payment
+
+### Gastos
+- `GET/POST/PUT/DELETE /api/gastos`
+
+## Business Rules
+
+### Cobros - Payment Allocation
+- Uses FIFO (First In, First Out) by FECHA_VENTA
+- Payments distributed across oldest sales first
+- Multiple payment lines allowed per transaction (e.g., $2000 cash + $1000 debit)
+
+### Estado Calculation
+```javascript
+if (saldoPendiente <= 0) return 'PAGO';
+if (saldoPendiente < total) return 'PAGO PARCIAL';
+return 'PAGO PENDIENTE';
+```
 
 ## Environment Configuration
 
@@ -108,10 +156,7 @@ DB_PASSWORD=password
 DB_NAME=database_name
 ```
 
-Optional SSH tunnel configuration available (USE_SSH=true) for remote database access.
-
-## Key Implementation Details
-
-- SQL queries use parameterized queries ($1, $2, etc.) for injection protection
-- Frontend constructs API URLs dynamically using `window.location.hostname`
-- Debug endpoint available: `GET /api/debug/:tabla-schema`
+## Git Configuration
+- **Repo**: https://github.com/diegobarnetche/granja_verde.git
+- **User**: diego barnetche
+- **Email**: barnetchediego@gmail.com

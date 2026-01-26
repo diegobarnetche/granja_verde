@@ -194,4 +194,27 @@ module.exports = {
     WHERE "ID_CLIENTE" = $1
     ORDER BY "FECHA_ING" DESC
   `,
+
+  // ===== ING_DETALLE (APLICACIÓN DE PAGOS) =====
+
+  // Insertar detalle de aplicación de pago a venta
+  insertIngDetalle: `
+    INSERT INTO "GV"."ING_DETALLE" (
+      "ID_ING",
+      "ID_VENTA",
+      "MONTO_APLICADO",
+      "FECHA_APLICACION"
+    ) VALUES ($1, $2, $3, $4)
+    RETURNING "ID_ING_DET"
+  `,
+
+  // Actualizar saldo pendiente y estado de una venta
+  updateSaldoVenta: `
+    UPDATE "GV"."VENTAS"
+    SET
+      "SALDO_PENDIENTE" = $2,
+      "ESTADO" = $3
+    WHERE "ID_VENTA" = $1
+    RETURNING "ID_VENTA", "SALDO_PENDIENTE", "ESTADO"
+  `,
 };
