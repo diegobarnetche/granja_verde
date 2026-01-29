@@ -1,5 +1,4 @@
 services:
-  # Backend unificado
   backend:
     build: ./backend
     container_name: granja-backend
@@ -20,7 +19,6 @@ services:
       - /app/node_modules
     restart: unless-stopped
 
-  # Frontend unificado
   frontend:
     build: ./frontend
     container_name: granja-frontend
@@ -32,24 +30,3 @@ services:
     depends_on:
       - backend
     restart: unless-stopped
-```
-
----
-
-## Paso 3: Crear .dockerignore en backend y frontend
-
-**backend/.dockerignore:**
-```
-node_modules
-.env
-npm-debug.log
-.git
-```
-
-**frontend/.dockerignore:**
-```
-node_modules
-.env
-npm-debug.log
-.git
-dist
