@@ -6,7 +6,7 @@
  */
 
 const SQL = {
-  // Insertar transacción de ingreso (pago)
+  // Insertar transacción de ingreso (pago) con ID_CUENTA
   insertIngTransaccion: `
     INSERT INTO "GV"."ING_TRANSACCIONES" (
       "FECHA_ING",
@@ -15,9 +15,17 @@ const SQL = {
       "METODO_PAGO",
       "REFERENCIA",
       "NOTA",
-      "ESTADO"
-    ) VALUES ($1, $2, $3, $4, $5, $6, $7)
+      "ESTADO",
+      "ID_CUENTA"
+    ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
     RETURNING "ID_ING"
+  `,
+
+  // Buscar cuenta por nombre
+  getCuentaByNombre: `
+    SELECT "ID_CUENTA", "NOMBRE", "MONEDA"
+    FROM "GV"."CUENTA_DINERO"
+    WHERE "NOMBRE" = $1 AND "ACTIVA" = true
   `,
 
   // Insertar detalle de aplicación de pago a venta
@@ -57,6 +65,36 @@ const SQL = {
 };
 
 const METODOS_PAGO_VALIDOS = ['DEBITO', 'CREDITO', 'TRANSFERENCIA', 'EFECTIVO', 'OTROS'];
+const MONEDAS_VALIDAS = ['UYU', 'USD'];
+
+/**
+ * Resuelve el ID de cuenta basándose en método de pago y moneda
+ * - EFECTIVO -> 'CAJA {MONEDA}'
+ * - TRANSFERENCIA/DEBITO/CREDITO/OTROS -> 'BROU {MONEDA}'
+ *
+ * @param {Object} dbClient - Cliente de transacción PostgreSQL
+ * @param {string} metodoPago - Método de pago
+ * @param {string} moneda - Moneda (UYU o USD)
+ * @returns {Promise<number>} ID de la cuenta
+ */
+async function resolveAccountId(dbClient, metodoPago, moneda) {
+  let nombreCuenta;
+
+  if (metodoPago === 'EFECTIVO') {
+    nombreCuenta = `CAJA ${moneda}`;
+  } else {
+    // TRANSFERENCIA, DEBITO, CREDITO, OTROS -> BROU
+    nombreCuenta = `BROU ${moneda}`;
+  }
+
+  const result = await dbClient.query(SQL.getCuentaByNombre, [nombreCuenta]);
+
+  if (result.rows.length === 0) {
+    throw new Error(`Cuenta no encontrada: ${nombreCuenta}. Verifique que exista en CUENTA_DINERO.`);
+  }
+
+  return result.rows[0].ID_CUENTA;
+}
 
 /**
  * Calcula el estado de pago según saldo pendiente
@@ -115,13 +153,14 @@ function validarPaymentLines(paymentLines) {
  * @param {number} params.idCliente - ID del cliente
  * @param {number|null} params.idVenta - ID de venta específica (solo para DIRECT)
  * @param {number} params.totalVenta - Total de la venta (solo para DIRECT, para validar)
- * @param {Array} params.paymentLines - [{monto, metodo_pago, referencia?, nota?}]
+ * @param {Array} params.paymentLines - [{monto, metodo_pago, referencia?, nota?, moneda?}]
  * @param {string} params.strategy - 'DIRECT' | 'FIFO'
  * @param {Date} params.fecha - Fecha del pago
+ * @param {string} params.moneda - Moneda por defecto para líneas sin moneda (default: 'UYU')
  * @returns {Promise<Object>} Resultado con transacciones creadas y aplicaciones
  */
 async function registrarPagosYAplicar(dbClient, params) {
-  const { idCliente, idVenta, totalVenta, paymentLines, strategy, fecha } = params;
+  const { idCliente, idVenta, totalVenta, paymentLines, strategy, fecha, moneda = 'UYU' } = params;
   const fechaPago = fecha || new Date();
 
   // Calcular total de pagos
@@ -132,6 +171,11 @@ async function registrarPagosYAplicar(dbClient, params) {
   const transaccionesCreadas = [];
   for (const line of paymentLines) {
     const monto = Math.round(Number(line.monto) * 100) / 100;
+    const lineMoneda = line.moneda || moneda; // Usar moneda de la línea o la default
+
+    // Resolver ID_CUENTA basado en método de pago + moneda
+    const idCuenta = await resolveAccountId(dbClient, line.metodo_pago, lineMoneda);
+
     const ingResult = await dbClient.query(SQL.insertIngTransaccion, [
       fechaPago,
       idCliente,
@@ -140,11 +184,13 @@ async function registrarPagosYAplicar(dbClient, params) {
       line.referencia || null,
       line.nota || null,
       'ACTIVO',
+      idCuenta,
     ]);
     transaccionesCreadas.push({
       ID_ING: ingResult.rows[0].ID_ING,
       monto,
       metodo_pago: line.metodo_pago,
+      id_cuenta: idCuenta,
     });
   }
 
@@ -249,6 +295,8 @@ module.exports = {
   registrarPagosYAplicar,
   validarPaymentLines,
   calcularEstadoPago,
+  resolveAccountId,
   METODOS_PAGO_VALIDOS,
+  MONEDAS_VALIDAS,
   SQL,
 };
