@@ -126,37 +126,93 @@ function validarCrearVenta(data) {
   }
 
   // ===== Validar Pago (Step 3 - opcional) =====
+  // Soporta DOS formatos:
+  // 1. PAGOS: array de líneas [{monto, metodo_pago, referencia?, nota?}] (nuevo, recomendado)
+  // 2. ABONADO + METODO_PAGO (legacy, se convierte a PAGOS internamente)
 
-  // ABONADO es opcional, default 0
-  if (data.ABONADO !== undefined) {
-    try {
-      data.ABONADO = validarMonto(data.ABONADO, 'ABONADO');
-    } catch (error) {
-      errors.push(error.message);
-    }
-  } else {
-    data.ABONADO = 0;
-  }
-
-  // Calcular TOTAL de los subtotales
+  // Calcular TOTAL de los subtotales primero
   if (data.ITEMS && Array.isArray(data.ITEMS) && data.ITEMS.length > 0) {
     data.TOTAL = data.ITEMS.reduce((sum, item) => sum + (item.SUBTOTAL || 0), 0);
     data.TOTAL = Math.round(data.TOTAL * 100) / 100;
   }
 
-  // Validar ABONADO <= TOTAL
-  if (data.ABONADO > data.TOTAL) {
-    errors.push('ABONADO no puede ser mayor que TOTAL');
-  }
+  // El frontend puede enviar el campo como "PAGOS" o "pagos"
+  // IMPORTANTE: guardar el input ANTES de reinicializar data.PAGOS
+  const pagosInput = data.PAGOS || data.pagos || [];
 
-  // Si hay abono, validar METODO_PAGO
-  if (data.ABONADO > 0) {
-    if (!data.METODO_PAGO || !METODOS_PAGO.includes(data.METODO_PAGO)) {
-      errors.push(`METODO_PAGO es obligatorio cuando ABONADO > 0 y debe ser uno de: ${METODOS_PAGO.join(', ')}`);
+  // Inicializar PAGOS como array vacío (se llenará después)
+  data.PAGOS = [];
+  data.TOTAL_PAGOS = 0;
+
+  // Formato nuevo: PAGOS array
+  if (Array.isArray(pagosInput) && pagosInput.length > 0) {
+    let totalPagos = 0;
+    pagosInput.forEach((line, index) => {
+      // Validar monto
+      const monto = Number(line.monto);
+      if (isNaN(monto) || monto <= 0) {
+        errors.push(`PAGOS[${index}].monto debe ser un número mayor a 0`);
+      } else {
+        totalPagos += monto;
+      }
+
+      // Validar metodo_pago
+      if (!line.metodo_pago || !METODOS_PAGO.includes(line.metodo_pago)) {
+        errors.push(`PAGOS[${index}].metodo_pago debe ser uno de: ${METODOS_PAGO.join(', ')}`);
+      }
+    });
+
+    totalPagos = Math.round(totalPagos * 100) / 100;
+
+    // Validar que no exceda el total
+    if (totalPagos > data.TOTAL) {
+      errors.push(`El total de pagos ($${totalPagos}) no puede exceder el TOTAL de la venta ($${data.TOTAL})`);
+    }
+
+    data.PAGOS = pagosInput.map(line => ({
+      monto: Math.round(Number(line.monto) * 100) / 100,
+      metodo_pago: line.metodo_pago,
+      referencia: line.referencia || null,
+      nota: line.nota || null,
+    }));
+    data.TOTAL_PAGOS = totalPagos;
+
+  // Formato legacy: ABONADO + METODO_PAGO (convertir a PAGOS)
+  } else if (data.ABONADO !== undefined && data.ABONADO !== null) {
+    try {
+      const abonado = validarMonto(data.ABONADO, 'ABONADO');
+
+      if (abonado > 0) {
+        // Validar METODO_PAGO
+        if (!data.METODO_PAGO || !METODOS_PAGO.includes(data.METODO_PAGO)) {
+          errors.push(`METODO_PAGO es obligatorio cuando ABONADO > 0 y debe ser uno de: ${METODOS_PAGO.join(', ')}`);
+        }
+
+        // Validar que no exceda el total
+        if (abonado > data.TOTAL) {
+          errors.push(`ABONADO ($${abonado}) no puede ser mayor que TOTAL ($${data.TOTAL})`);
+        }
+
+        // Convertir a formato PAGOS
+        if (errors.length === 0 || !errors.some(e => e.includes('METODO_PAGO'))) {
+          data.PAGOS = [{
+            monto: abonado,
+            metodo_pago: data.METODO_PAGO,
+            referencia: data.REFERENCIA || null,
+            nota: data.NOTA || null,
+          }];
+          data.TOTAL_PAGOS = abonado;
+        }
+      }
+    } catch (error) {
+      errors.push(error.message);
     }
   }
 
-  // REFERENCIA y NOTA son opcionales (strings)
+  // Compatibilidad: mantener ABONADO para respuestas
+  data.ABONADO = data.TOTAL_PAGOS;
+
+  // REFERENCIA y NOTA son opcionales (strings) - ya procesados arriba
 
   if (errors.length > 0) {
     const error = new Error('Errores de validación');

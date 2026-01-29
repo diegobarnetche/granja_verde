@@ -63,6 +63,10 @@ app.use('/api/gastos', gastosRouter(pool));
 const cobrosRouter = require('./modules/cobros/cobros.routes');
 app.use('/api/cobros', cobrosRouter(pool));
 
+// Módulo de cambios de moneda
+const cambiosRouter = require('./modules/cambios/cambios.routes');
+app.use('/api/cambios', cambiosRouter(pool));
+
 verificarConexion().then(() => {
   app.listen(PORT, () => {
     console.log(`Servidor corriendo en http://localhost:${PORT}`);

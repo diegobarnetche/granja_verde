@@ -6,6 +6,7 @@
 
 const SQL = require('./ventas.sql');
 const { calcularEstadoPago } = require('./ventas.validators');
+const { registrarPagosYAplicar } = require('../shared/pagos.service');
 
 class VentasService {
   constructor(pool) {
@@ -72,7 +73,11 @@ class VentasService {
 
   /**
    * Crea una venta completa en una transacción atómica
-   * Inserta: VENTAS + DETALLE_VENTAS + ING_TRANSACCIONES (si hay abono)
+   * Inserta: VENTAS + DETALLE_VENTAS + ING_TRANSACCIONES + ING_DETALLE (si hay pago)
+   *
+   * IMPORTANTE: Ahora soporta múltiples líneas de pago (PAGOS array)
+   * y registra correctamente en ING_DETALLE para trazabilidad.
+   *
    * @param {Object} data - Datos validados de la venta
    * @returns {Promise<Object>} - IDs generados y resumen
    */
@@ -86,28 +91,26 @@ class VentasService {
       const productosIds = data.ITEMS.map((item) => item.ITEM);
       const umdMap = await this.verificarProductosExisten(productosIds);
 
-      // Calcular TOTAL y SALDO_PENDIENTE
-      const total = data.TOTAL; // Ya calculado en el validator
-      const abonado = data.ABONADO || 0;
-      const saldoPendiente = Math.round((total - abonado) * 100) / 100;
-      const estadoPago = calcularEstadoPago(abonado, total);
+      // Calcular TOTAL (ya calculado en validator)
+      const total = data.TOTAL;
 
       // Timestamp actual
       const fechaVenta = new Date();
 
-      // Insertar VENTAS
+      // PASO 1: Insertar VENTAS con SALDO_PENDIENTE = TOTAL inicialmente
+      // (se actualizará después si hay pago)
       const ventaResult = await client.query(SQL.insertVenta, [
         fechaVenta,
         data.ID_CLIENTE,
         data.CANAL,
         total,
         data.ESTADO_PREP, // null si es POS
-        estadoPago,
-        saldoPendiente,
+        'PAGO PENDIENTE', // Estado inicial
+        total, // SALDO_PENDIENTE = TOTAL inicialmente
       ]);
       const ventaId = ventaResult.rows[0].ID_VENTA;
 
-      // Insertar DETALLE_VENTAS
+      // PASO 2: Insertar DETALLE_VENTAS
       for (const item of data.ITEMS) {
         const umd = umdMap.get(item.ITEM);
         // CANTIDAD_UNIDADES = CANTIDAD * UMD (según regla existente en el repo)
@@ -123,30 +126,40 @@ class VentasService {
         ]);
       }
 
-      // Insertar ING_TRANSACCIONES solo si ABONADO > 0
-      let ingId = null;
-      if (abonado > 0) {
-        const ingResult = await client.query(SQL.insertIngTransaccion, [
-          fechaVenta,
-          data.ID_CLIENTE,
-          abonado,
-          data.METODO_PAGO,
-          data.REFERENCIA || null,
-          data.NOTA || null,
-          'ACTIVO',
-        ]);
-        ingId = ingResult.rows[0].ID_ING;
+      // PASO 3: Si hay pagos, registrar en ING_TRANSACCIONES + ING_DETALLE
+      let resultadoPago = null;
+      const tienePagos = data.PAGOS && Array.isArray(data.PAGOS) && data.PAGOS.length > 0;
+
+      if (tienePagos) {
+        // Usar el servicio compartido de pagos con estrategia DIRECT
+        resultadoPago = await registrarPagosYAplicar(client, {
+          idCliente: data.ID_CLIENTE,
+          idVenta: ventaId,
+          totalVenta: total,
+          paymentLines: data.PAGOS,
+          strategy: 'DIRECT',
+          fecha: fechaVenta,
+        });
       }
 
       await client.query('COMMIT');
 
+      // Calcular valores finales para la respuesta
+      const abonado = resultadoPago ? resultadoPago.total_pagado : 0;
+      const saldoPendiente = Math.round((total - abonado) * 100) / 100;
+      const estadoPago = calcularEstadoPago(abonado, total);
+
       return {
         ID_VENTA: ventaId,
-        ID_ING: ingId,
         TOTAL: total,
         ABONADO: abonado,
         SALDO_PENDIENTE: saldoPendiente,
         ESTADO: estadoPago,
+        // Detalles del pago si hubo
+        PAGOS: resultadoPago ? {
+          transacciones: resultadoPago.transacciones,
+          aplicaciones: resultadoPago.aplicaciones,
+        } : null,
       };
     } catch (error) {
       await client.query('ROLLBACK');

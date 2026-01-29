@@ -22,8 +22,14 @@ function Navbar() {
         <Link to="/gastos" className={isActive('/gastos')}>
           Gastos
         </Link>
+        <Link to="/pago-obligaciones" className={isActive('/pago-obligaciones')}>
+          Pago Obligaciones
+        </Link>
         <Link to="/pedidos" className={isActive('/pedidos')}>
           Pedidos
+        </Link>
+        <Link to="/cambios" className={isActive('/cambios')}>
+          Cambios
         </Link>
       </div>
     </nav>
