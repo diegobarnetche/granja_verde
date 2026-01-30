@@ -1,5 +1,4 @@
 services:
-  # Backend unificado
   backend:
     build: ./backend
     container_name: granja-backend
@@ -20,7 +19,6 @@ services:
       - /app/node_modules
     restart: unless-stopped
 
-  # Frontend unificado
   frontend:
     build: ./frontend
     container_name: granja-frontend
