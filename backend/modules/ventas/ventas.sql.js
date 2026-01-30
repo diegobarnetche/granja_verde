@@ -135,8 +135,9 @@ module.exports = {
       "UMD",
       "CANTIDAD",
       "CANTIDAD_UNIDADES",
-      "SUBTOTAL"
-    ) VALUES ($1, $2, $3, $4, $5, $6)
+      "SUBTOTAL",
+      "ESTADO_PREP"
+    ) VALUES ($1, $2, $3, $4, $5, $6, 'PENDIENTE')
     RETURNING "ID_DETALLE"
   `,
 
@@ -150,6 +151,7 @@ module.exports = {
       d."CANTIDAD",
       d."CANTIDAD_UNIDADES",
       d."SUBTOTAL",
+      d."ESTADO_PREP",
       p."ITEM_DESCRIPCION"
     FROM "GV"."DETALLE_VENTAS" d
     INNER JOIN "GV"."PRODUCTO" p ON d."ITEM" = p."ITEM"

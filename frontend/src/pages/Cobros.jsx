@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 
-const API_URL = `http://${window.location.hostname}:3001/api/cobros`
+const API_URL = `${window.location.protocol}//${window.location.hostname}:3001/api/cobros`
 
 function Cobros() {
   // Estado principal

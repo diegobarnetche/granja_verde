@@ -75,6 +75,7 @@ coverage/
 promt ventas_module.txt
 *.txt.bak
 2026-01-16-modified_sales_create_cobros.txt
+2026-01-28-table-gvgasto.txt
 
 # Archivos nul (Windows)
 nul

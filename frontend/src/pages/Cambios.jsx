@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo } from 'react'
 
-const API_URL = `http://${window.location.hostname}:3001/api/cambios`
+const API_URL = `${window.location.protocol}//${window.location.hostname}:3001/api/cambios`
 
 function Cambios() {
   const [cuentas, setCuentas] = useState([])

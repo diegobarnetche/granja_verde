@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 
-const API_URL = `http://${window.location.hostname}:3001/api/ventas`
+const API_URL = `${window.location.protocol}//${window.location.hostname}:3001/api/ventas`
 
 function Ventas() {
   // Catálogos y enums
