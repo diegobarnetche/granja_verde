@@ -6,6 +6,12 @@ export default defineConfig({
   server: {
     port: 5173,
     host: '0.0.0.0',
-    allowedHosts: ['granjaverde-server.tail7177e2.ts.net']
+    allowedHosts: ['granjaverde-server.tail7177e2.ts.net'],
+    proxy: {
+      '/api': {
+        target: 'http://granja-backend:3000',
+        changeOrigin: true
+      }
+    }
   }
 })
