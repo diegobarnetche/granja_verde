@@ -71,6 +71,14 @@ app.use('/api/cambios', cambiosRouter(pool));
 const pedidosRouter = require('./modules/pedidos/pedidos.routes');
 app.use('/api/pedidos', pedidosRouter(pool));
 
+// Módulo de ajustes financieros
+const ajustesFinancierosRouter = require('./modules/ajustes-financieros/ajustes-financieros.routes');
+app.use('/api/ajustes-financieros', ajustesFinancierosRouter(pool));
+
+// Módulo de clientes
+const clientesRouter = require('./modules/clientes/clientes.routes');
+app.use('/api/clientes', clientesRouter(pool));
+
 verificarConexion().then(() => {
   app.listen(PORT, () => {
     console.log(`Servidor corriendo en http://localhost:${PORT}`);

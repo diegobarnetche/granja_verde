@@ -20,6 +20,11 @@ function PagoObligaciones() {
   const [showPaymentModal, setShowPaymentModal] = useState(false)
   const [paymentLines, setPaymentLines] = useState([{ metodo_pago: 'EFECTIVO', monto: '' }])
 
+  // Modal de bonificación
+  const [showBonificacionModal, setShowBonificacionModal] = useState(false)
+  const [selectedPago, setSelectedPago] = useState(null)
+  const [montoBonificacion, setMontoBonificacion] = useState('')
+
   // Filtros
   const [filtroMoneda, setFiltroMoneda] = useState('')
 
@@ -144,6 +149,64 @@ function PagoObligaciones() {
     } catch (error) {
       console.error('Error al registrar pago:', error)
       alert('Error al registrar pago: ' + error.message)
+    } finally {
+      setIsSubmitting(false)
+    }
+  }
+
+  const handleSelectPagoHistorial = (pago) => {
+    setSelectedPago(pago)
+    setMontoBonificacion('')
+    setShowBonificacionModal(true)
+  }
+
+  const handleConfirmBonificacion = async () => {
+    if (!selectedPago) return
+
+    const monto = parseFloat(montoBonificacion)
+
+    // Validaciones
+    if (!monto || monto <= 0) {
+      alert('El monto de bonificación debe ser mayor a 0')
+      return
+    }
+
+    if (monto > parseFloat(selectedPago.MONTO_APLICADO)) {
+      alert(`La bonificación (${monto}) no puede exceder el monto del pago (${selectedPago.MONTO_APLICADO})`)
+      return
+    }
+
+    setIsSubmitting(true)
+
+    try {
+      const payload = {
+        monto_bonificacion: monto
+      }
+
+      const response = await fetch(`${API_URL}/pagos/${selectedPago.ID_EG}/bonificacion`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+      })
+
+      const result = await response.json()
+
+      if (!response.ok) {
+        throw new Error(result.error || 'Error desconocido')
+      }
+
+      alert(result.message)
+      setShowBonificacionModal(false)
+      setSelectedPago(null)
+      setMontoBonificacion('')
+      // Recargar historial
+      if (selectedObligacion) {
+        cargarHistorial(selectedObligacion.ID_GASTO)
+      }
+
+    } catch (error) {
+      console.error('Error al registrar bonificación:', error)
+      alert('Error al registrar bonificación: ' + error.message)
     } finally {
       setIsSubmitting(false)
     }
@@ -289,24 +352,36 @@ function PagoObligaciones() {
               {historial.length === 0 ? (
                 <p className="no-historial">No hay pagos registrados</p>
               ) : (
-                <table className="historial-table">
-                  <thead>
-                    <tr>
-                      <th>Fecha</th>
-                      <th>Método</th>
-                      <th>Monto</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {historial.map(h => (
-                      <tr key={h.ID_EG}>
-                        <td>{formatFecha(h.FECHA_EG)}</td>
-                        <td>{h.METODO_PAGO}</td>
-                        <td>{formatMonto(h.MONTO_APLICADO, selectedObligacion.MONEDA)}</td>
+                <>
+                  <p className="historial-hint">Haz clic en un pago para registrar una bonificación</p>
+                  <table className="historial-table">
+                    <thead>
+                      <tr>
+                        <th>Fecha</th>
+                        <th>Método</th>
+                        <th>Monto</th>
+                        <th>Acción</th>
                       </tr>
-                    ))}
-                  </tbody>
-                </table>
+                    </thead>
+                    <tbody>
+                      {historial.map(h => (
+                        <tr key={h.ID_EG} className="historial-row">
+                          <td>{formatFecha(h.FECHA_EG)}</td>
+                          <td>{h.METODO_PAGO}</td>
+                          <td>{formatMonto(h.MONTO_APLICADO, selectedObligacion.MONEDA)}</td>
+                          <td>
+                            <button
+                              onClick={() => handleSelectPagoHistorial(h)}
+                              className="btn-bonificacion-small"
+                            >
+                              Bonificación
+                            </button>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </>
               )}
             </>
           ) : (
@@ -374,6 +449,50 @@ function PagoObligaciones() {
                 disabled={isSubmitting}
               >
                 {isSubmitting ? 'Procesando...' : 'Confirmar Pago'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal de bonificación */}
+      {showBonificacionModal && selectedPago && (
+        <div className="modal-overlay">
+          <div className="modal">
+            <h3>Registrar Bonificación</h3>
+            <p className="modal-subtitle">
+              Pago del: <strong>{formatFecha(selectedPago.FECHA_EG)}</strong>
+            </p>
+            <p className="modal-subtitle">
+              Método: <strong>{selectedPago.METODO_PAGO}</strong>
+            </p>
+            <p className="modal-subtitle">
+              Monto del pago: <strong>{formatMonto(selectedPago.MONTO_APLICADO, selectedObligacion.MONEDA)}</strong>
+            </p>
+
+            <div className="form-group">
+              <label>Monto de Bonificación *</label>
+              <input
+                type="number"
+                placeholder="0.00"
+                value={montoBonificacion}
+                onChange={(e) => setMontoBonificacion(e.target.value)}
+                step="0.01"
+                min="0.01"
+                autoFocus
+              />
+            </div>
+
+            <div className="modal-buttons">
+              <button onClick={() => { setShowBonificacionModal(false); setSelectedPago(null) }}>
+                Cancelar
+              </button>
+              <button
+                onClick={handleConfirmBonificacion}
+                className="btn-primary"
+                disabled={isSubmitting}
+              >
+                {isSubmitting ? 'Procesando...' : 'Confirmar Bonificación'}
               </button>
             </div>
           </div>
@@ -537,6 +656,12 @@ function PagoObligaciones() {
           color: #666;
           font-style: italic;
         }
+        .historial-hint {
+          color: #666;
+          font-size: 14px;
+          font-style: italic;
+          margin-bottom: 10px;
+        }
         .historial-table {
           width: 100%;
           border-collapse: collapse;
@@ -549,6 +674,40 @@ function PagoObligaciones() {
         }
         .historial-table th {
           background: #f4f4f4;
+        }
+        .historial-row {
+          transition: background 0.2s;
+        }
+        .historial-row:hover {
+          background: #f8f9fa;
+        }
+        .btn-bonificacion-small {
+          padding: 5px 10px;
+          background: #17a2b8;
+          color: white;
+          border: none;
+          border-radius: 4px;
+          font-size: 13px;
+          cursor: pointer;
+        }
+        .btn-bonificacion-small:hover {
+          background: #138496;
+        }
+        .form-group {
+          margin-bottom: 15px;
+        }
+        .form-group label {
+          display: block;
+          margin-bottom: 5px;
+          font-weight: bold;
+        }
+        .form-group input {
+          width: 100%;
+          padding: 8px;
+          border: 1px solid #ccc;
+          border-radius: 4px;
+          font-family: inherit;
+          font-size: 14px;
         }
 
         /* Modal */

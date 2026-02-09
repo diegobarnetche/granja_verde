@@ -9,6 +9,7 @@ backend/.env
 frontend/.env
 .env.local
 .env.*.local
+backend/tests
 
 # Bases de Datos Locales (SQLite obsoleto)
 backend/gastos.db
@@ -76,6 +77,7 @@ promt ventas_module.txt
 *.txt.bak
 2026-01-16-modified_sales_create_cobros.txt
 2026-01-28-table-gvgasto.txt
+backend/prompt_modulo_ajustes_financieros (1).md
 
 # Archivos nul (Windows)
 nul

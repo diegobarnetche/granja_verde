@@ -18,7 +18,10 @@
       "Bash(timeout /t 3)",
       "Bash(python:*)",
       "Bash(git config:*)",
-      "Bash(timeout /t 3 /nobreak)"
+      "Bash(timeout /t 3 /nobreak)",
+      "Bash(timeout:*)",
+      "Bash(git restore:*)",
+      "Bash(ping:*)"
     ]
   }
 }

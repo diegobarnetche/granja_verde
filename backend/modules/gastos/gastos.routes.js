@@ -28,6 +28,11 @@ function createGastosRouter(pool) {
   router.post('/obligaciones/pagar', controller.registrarPagoObligacion.bind(controller));
 
   // ============================================
+  // BONIFICACIONES SOBRE PAGOS
+  // ============================================
+  router.post('/pagos/:id_eg/bonificacion', controller.registrarBonificacionPago.bind(controller));
+
+  // ============================================
   // GASTOS CRUD
   // ============================================
   router.get('/', controller.getAll.bind(controller));

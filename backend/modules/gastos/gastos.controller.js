@@ -210,6 +210,38 @@ class GastosController {
       }
     }
   }
+
+  // ============================================
+  // BONIFICACIONES SOBRE PAGOS
+  // ============================================
+
+  /**
+   * POST /api/gastos/pagos/:id_eg/bonificacion
+   * Registrar bonificación sobre un pago específico
+   * Body: { monto_bonificacion }
+   */
+  async registrarBonificacionPago(req, res) {
+    try {
+      const payload = {
+        id_eg: req.params.id_eg,
+        monto_bonificacion: req.body.monto_bonificacion
+      };
+
+      const result = await this.service.registrarBonificacionPago(payload);
+      res.status(201).json(result);
+    } catch (error) {
+      if (error.message.includes('requerido') ||
+          error.message.includes('debe ser mayor') ||
+          error.message.includes('no puede exceder')) {
+        res.status(400).json({ error: error.message });
+      } else if (error.message === 'Pago no encontrado') {
+        res.status(404).json({ error: error.message });
+      } else {
+        console.error('Error al registrar bonificación:', error);
+        res.status(500).json({ error: error.message });
+      }
+    }
+  }
 }
 
 module.exports = GastosController;

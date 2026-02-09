@@ -240,6 +240,44 @@ const queries = {
     WHERE ed."ID_GASTO" = $1
       AND et."ESTADO" = 'ACTIVO'
     ORDER BY et."FECHA_EG" DESC
+  `,
+
+  // ============================================
+  // BONIFICACIONES SOBRE PAGOS
+  // ============================================
+
+  /**
+   * Obtener datos de un pago específico para bonificación
+   */
+  getPagoById: `
+    SELECT
+      et."ID_EG",
+      et."MONTO",
+      et."MONEDA",
+      et."METODO_PAGO",
+      et."ID_CUENTA",
+      et."ESTADO",
+      cd."NOMBRE" AS "NOMBRE_CUENTA"
+    FROM "GV"."EG_TRANSACCIONES" et
+    JOIN "GV"."CUENTA_DINERO" cd ON et."ID_CUENTA" = cd."ID_CUENTA"
+    WHERE et."ID_EG" = $1
+  `,
+
+  /**
+   * Insertar ingreso por bonificación
+   * Usa ID_CLIENTE = 70 ("INTERNO") para bonificaciones bancarias
+   * Usa METODO_PAGO = 'OTRO' (singular) según el check constraint
+   */
+  insertIngresoBonificacion: `
+    INSERT INTO "GV"."ING_TRANSACCIONES" (
+      "ID_CLIENTE",
+      "MONTO",
+      "METODO_PAGO",
+      "ID_CUENTA",
+      "NOTA"
+    )
+    VALUES (70, $1, 'OTRO', $2, $3)
+    RETURNING "ID_ING", "FECHA_ING"
   `
 };
 

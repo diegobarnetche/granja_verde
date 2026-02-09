@@ -406,6 +406,82 @@ class GastosService {
       client.release();
     }
   }
+
+  // ============================================
+  // BONIFICACIONES SOBRE PAGOS
+  // ============================================
+
+  /**
+   * Registrar bonificación sobre un pago específico
+   * @param {Object} payload - { id_eg, monto_bonificacion }
+   */
+  async registrarBonificacionPago(payload) {
+    const { id_eg, monto_bonificacion } = payload;
+
+    // Validaciones básicas
+    if (!id_eg) {
+      throw new Error('id_eg es requerido');
+    }
+    if (!monto_bonificacion || monto_bonificacion <= 0) {
+      throw new Error('monto_bonificacion debe ser mayor a 0');
+    }
+
+    const client = await this.pool.connect();
+
+    try {
+      await client.query('BEGIN');
+
+      // Obtener datos del pago original
+      const pagoResult = await client.query(queries.getPagoById, [id_eg]);
+      if (pagoResult.rows.length === 0) {
+        throw new Error('Pago no encontrado');
+      }
+
+      const pago = pagoResult.rows[0];
+
+      // Validar que la bonificación no exceda el monto del pago
+      if (parseFloat(monto_bonificacion) > parseFloat(pago.MONTO)) {
+        throw new Error(`La bonificación (${monto_bonificacion}) no puede exceder el monto del pago (${pago.MONTO})`);
+      }
+
+      // Crear ingreso por bonificación
+      const concepto = `Bonificación sobre pago EG #${id_eg}`;
+
+      const ingResult = await client.query(queries.insertIngresoBonificacion, [
+        monto_bonificacion,
+        pago.ID_CUENTA,
+        concepto
+      ]);
+
+      const idIng = ingResult.rows[0].ID_ING;
+      const fechaIng = ingResult.rows[0].FECHA_ING;
+
+      await client.query('COMMIT');
+
+      return {
+        success: true,
+        message: `Bonificación de ${monto_bonificacion} registrada exitosamente en ${pago.NOMBRE_CUENTA}`,
+        data: {
+          id_ing: idIng,
+          fecha_ing: fechaIng,
+          monto: monto_bonificacion,
+          cuenta_destino: pago.NOMBRE_CUENTA,
+          pago_original: {
+            id_eg: id_eg,
+            monto_original: pago.MONTO,
+            metodo_pago: pago.METODO_PAGO
+          }
+        }
+      };
+
+    } catch (error) {
+      await client.query('ROLLBACK');
+      console.error('Error en registrarBonificacionPago:', error);
+      throw error;
+    } finally {
+      client.release();
+    }
+  }
 }
 
 module.exports = GastosService;
