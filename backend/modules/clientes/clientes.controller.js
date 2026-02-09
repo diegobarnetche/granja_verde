@@ -22,6 +22,7 @@ class ClientesController {
     }
   }
 
+
   /**
    * GET /api/clientes/:id
    * Obtener cliente por ID

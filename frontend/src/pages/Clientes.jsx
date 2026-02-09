@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 
-const API_URL = `${window.location.protocol}//${window.location.hostname}:3001/api/clientes`
+const API_URL = `${window.location.protocol}//${window.location.hostname}:3000/api/clientes`
 
 function Clientes() {
   const [clientes, setClientes] = useState([])

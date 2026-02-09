@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from 'react'
 
-const API_URL = `${window.location.protocol}//${window.location.hostname}:3001/api/gastos`
+const API_URL = `${window.location.protocol}//${window.location.hostname}:3000/api/gastos`
 
 const METODOS_PAGO = [
   { value: 'EFECTIVO', label: 'Efectivo' },

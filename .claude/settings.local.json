@@ -21,7 +21,8 @@
       "Bash(timeout /t 3 /nobreak)",
       "Bash(timeout:*)",
       "Bash(git restore:*)",
-      "Bash(ping:*)"
+      "Bash(ping:*)",
+      "Bash(git fetch:*)"
     ]
   }
 }

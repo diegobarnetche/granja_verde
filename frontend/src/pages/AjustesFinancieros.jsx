@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback } from 'react'
 
-const API_URL = `${window.location.protocol}//${window.location.hostname}:3001/api/ajustes-financieros`
-const API_CAMBIOS = `${window.location.protocol}//${window.location.hostname}:3001/api/cambios`
+const API_URL = `${window.location.protocol}//${window.location.hostname}:3000/api/ajustes-financieros`
+const API_CAMBIOS = `${window.location.protocol}//${window.location.hostname}:3000/api/cambios`
 
 function AjustesFinancieros() {
   // Estado general
