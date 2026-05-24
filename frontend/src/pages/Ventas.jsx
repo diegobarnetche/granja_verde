@@ -4,7 +4,7 @@ const API_URL = `/api/ventas`
 
 function Ventas() {
   // Catálogos y enums
-  const [catalogos, setCatalogos] = useState({ clientes: [], productos: [], enums: {} })
+  const [catalogos, setCatalogos] = useState({ clientes: [], items: [], empaques: [], enums: {} })
 
   // Estado del wizard (5 pasos)
   const [paso, setPaso] = useState(1)
@@ -25,7 +25,8 @@ function Ventas() {
 
   // Item actual para agregar
   const [itemActual, setItemActual] = useState({
-    ITEM: '',
+    ID_EMPAQUE: '',
+    ID_ITEM: null,
     CANTIDAD: '',
     SUBTOTAL: '',
     UMD: 0,
@@ -78,7 +79,8 @@ function Ventas() {
       clienteAbona: false,
     })
     setItemActual({
-      ITEM: '',
+      ID_EMPAQUE: '',
+      ID_ITEM: null,
       CANTIDAD: '',
       SUBTOTAL: '',
       UMD: 0,
@@ -166,14 +168,15 @@ function Ventas() {
     setMostrarListaProductos(true)
   }
 
-  const seleccionarProducto = (producto) => {
+  const seleccionarProducto = (empaque) => {
     setItemActual({
       ...itemActual,
-      ITEM: producto.item,
-      UMD: producto.umd,
-      ITEM_DESCRIPCION: producto.label,
+      ID_EMPAQUE: empaque.id,
+      ID_ITEM: empaque.ID_ITEM || null,
+      UMD: empaque.UNIDADES,
+      ITEM_DESCRIPCION: empaque.label,
     })
-    setFiltroProducto(producto.label)
+    setFiltroProducto(empaque.label)
     setMostrarListaProductos(false)
   }
 
@@ -183,7 +186,7 @@ function Ventas() {
   }
 
   const agregarItem = () => {
-    if (!itemActual.ITEM) {
+    if (!itemActual.ID_EMPAQUE) {
       alert('Debe seleccionar un producto')
       return
     }
@@ -201,7 +204,8 @@ function Ventas() {
     const cantidadUnidades = cantidad * itemActual.UMD
 
     const nuevoItem = {
-      ITEM: itemActual.ITEM,
+      ID_EMPAQUE: itemActual.ID_EMPAQUE,
+      ID_ITEM: itemActual.ID_ITEM,
       CANTIDAD: cantidad,
       SUBTOTAL: subtotal,
       UMD: itemActual.UMD,
@@ -215,7 +219,8 @@ function Ventas() {
     })
 
     setItemActual({
-      ITEM: '',
+      ID_EMPAQUE: '',
+      ID_ITEM: null,
       CANTIDAD: '',
       SUBTOTAL: '',
       UMD: 0,
@@ -261,7 +266,8 @@ function Ventas() {
         ID_CLIENTE: formData.ID_CLIENTE,
         CANAL: formData.CANAL,
         ITEMS: formData.ITEMS.map(item => ({
-          ITEM: item.ITEM,
+          ID_EMPAQUE: item.ID_EMPAQUE,
+          ID_ITEM: item.ID_ITEM,
           CANTIDAD: item.CANTIDAD,
           SUBTOTAL: item.SUBTOTAL,
         })),
@@ -314,8 +320,8 @@ function Ventas() {
     cliente.label && cliente.label.toLowerCase().includes(filtroCliente.toLowerCase())
   )
 
-  const productosFiltrados = catalogos.productos.filter(producto =>
-    producto.label && producto.label.toLowerCase().includes(filtroProducto.toLowerCase())
+  const productosFiltrados = (catalogos.empaques || []).filter(empaque =>
+    empaque.label && empaque.label.toLowerCase().includes(filtroProducto.toLowerCase())
   )
 
   const total = calcularTotal()
@@ -440,13 +446,13 @@ function Ventas() {
                 />
                 {mostrarListaProductos && (
                   <div className="autocomplete-list">
-                    {productosFiltrados.slice(0, 10).map(producto => (
+                    {productosFiltrados.slice(0, 10).map(empaque => (
                       <div
-                        key={producto.item}
+                        key={empaque.id}
                         className="autocomplete-item"
-                        onClick={() => seleccionarProducto(producto)}
+                        onClick={() => seleccionarProducto(empaque)}
                       >
-                        {producto.label} (Empaque: {producto.umd})
+                        {empaque.label} ({empaque.UNIDADES} u.)
                       </div>
                     ))}
                     {productosFiltrados.length === 0 && (
@@ -457,7 +463,7 @@ function Ventas() {
               </div>
             </div>
 
-            {itemActual.ITEM && (
+            {itemActual.ID_EMPAQUE && (
               <div className="form-field">
                 <label>Empaque (UMD)</label>
                 <input
@@ -497,7 +503,7 @@ function Ventas() {
               />
             </div>
 
-            {itemActual.ITEM && itemActual.CANTIDAD && (
+            {itemActual.ID_EMPAQUE && itemActual.CANTIDAD && (
               <div className="form-field">
                 <label>Total Unidades</label>
                 <input
